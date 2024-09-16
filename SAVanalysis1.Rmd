@@ -1,0 +1,194 @@
+---
+title: "SAV analysis 1"
+author: "Emma Cardoso"
+date: "2024-09-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(terra)
+library(sf)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(here)
+library(tmap)
+library(cowplot)
+library(raster)
+library(geojsonio)
+library(jsonlite)
+library(lubridate)
+library(tidyverse)
+library(zoo)
+library(car)
+```
+
+```{r}
+here::i_am("SAVdata.csv")
+setwd(here())
+```
+```{r}
+#reading in data
+SAVdata <- read.csv("SAVdata.csv") #reading in file
+
+#looking at initial data characteristics
+summary(SAVdata)
+str(SAVdata)
+
+#converting date column into date format instead of character
+SAVdata$date <- as.Date(SAVdata$date, format = "%m/%d/%Y")
+str(SAVdata) #checking to see date change occurred correctly
+```
+```{r}
+#NOTE :: !!!
+#this data is incomplete, missing COPR values
+```
+
+```{r}
+# i need to omit NA values, but need to think this through and do this carefully because I dont want to omit entire rows that have only one NA in one column, so might need to think about this. maybe run each regression at a time instead of all together like I did below ?
+```
+
+
+```{r}
+#visualizing data for NDAVI and sites 
+
+#line plot
+ggplot(data = SAVdata, aes(x = date, y = NDAVI, color = site)) +
+  geom_line() +
+  labs(title = "NDAVI Over Time by Site",
+       x = "Date",
+       y = "NDAVI")
+
+#boxplot
+ggplot(SAVdata, aes(x = site, y = NDAVI, fill = site)) +
+  geom_boxplot() +
+  labs(title = "Distribution of NDAVI by Site",
+       x = "Site",
+       y = "NDAVI")
+```
+```{r}
+
+#running an ANOVA to see if there is a statistically significant difference between sites and NDAVI
+anova_results <- aov(NDAVI ~ site, data = SAVdata)
+summary(anova_results)
+
+#p value is 0.000167, indicating that there are statistically significant differences. F value is 7.072 indicating that the differences between the group means are substantial relative to the variation within each group. showing that the variability between group means is large compared to the variability within the groups.
+
+
+#running an Post-hoc Test (Tukey's HSD) to see where the variability lies 
+tukey_results <- TukeyHSD(anova_results)
+print(tukey_results)
+
+#this shoes that there is a statistically signficiant difference between NEC and COPR, NPB and COPR, and NVBR and COPR, as all these have a p < 0.05, however, these three sites within NCOS dont have statistically significant variation betwen themselves. this is interesting because COPR has been restored for longer, and also if closer to the ocean
+#also makes sense that the difference between NVBR and COPR are closer since the NVBR is the site closest to COPR
+```
+```{r}
+#checking to see if there is a correlation between time and NDAVI at each of the sites
+
+#correlation analysis for NVBR sites and NDAVI 
+nvbr_timecor <- subset(SAVdata, site == "NVBR")
+cor.test(as.numeric(nvbr_timecor$date), nvbr_timecor$NDAVI)
+#p here is greater than 0.05, so no correlation between time and NDAVI at this site
+
+
+#correlation analysis for NEC sites and NDAVI 
+nec_timecor <- subset(SAVdata, site == "NEC")
+cor.test(as.numeric(nec_timecor$date), nec_timecor$NDAVI)
+#p here is greater than 0.05, so no correlation between time and NDAVI at this site
+
+#correlation analysis for NPB sites and NDAVI 
+npb_timecor <- subset(SAVdata, site == "NPB")
+cor.test(as.numeric(npb_timecor$date), npb_timecor$NDAVI)
+#p here is greater than 0.05, so no correlation between time and NDAVI at this site
+
+
+#correlation analysis for COPR sites and NDAVI 
+copr_timecor <- subset(SAVdata, site == "COPR")
+cor.test(as.numeric(copr_timecor$date), copr_timecor$NDAVI)
+#p here is greater than 0.05, so no correlation between time and NDAVI at this site
+
+```
+```{r}
+#now time to analyze and see if any of the water quality measurements effect NDAVI 
+
+#starting with running individual regression models for each individual water quality measurement to see if they are signfiicant predictors of NDAVI 
+
+#DO.mg.L linear regresison
+model_DO.mg <- lm(NDAVI ~ DO.mg.L, data = SAVdata)
+summary(model_DO.mg)
+
+#DO.sat linear regression
+model_DO.sat <- lm(NDAVI ~ DO.sat, data = SAVdata)
+summary(model_DO.sat)
+
+#Conductivity.uS.cm linear regression
+model_Conductivity <- lm(NDAVI ~ Conductivity.uS.cm, data = SAVdata)
+summary(model_Conductivity)
+
+#Salinity.ppt linear regression
+model_Salinity <- lm(NDAVI ~ Salinity.ppt, data = SAVdata)
+summary(model_Salinity)
+
+#Temperature linear regression
+model_Temp <- lm(NDAVI ~ Temperature.C, data = SAVdata)
+summary(model_Temp)
+
+#pH linear regression
+model_pH <- lm(NDAVI ~ pH, data = SAVdata)
+summary(model_pH)
+
+```
+
+```{r}
+
+#running multiple regression model including all water quality variables to understand their combined effect on NDAVI
+
+# Fit the model
+model <- lm(NDAVI ~ DO.mg.L + DO.sat + Conductivity.uS.cm + Salinity.ppt + Temperature.C + pH, data = SAVdata)
+# Summary of the model
+summary(model)
+
+
+# Diagnostic plots
+par(mfrow=c(2,2))
+plot(model)
+
+#results that are less than 0.05 show that there is a statistically significant relationship between the water quality variable and its effect on NDAVI even after accounting for/ taking into account all the other varaibles 
+
+#do i need to check for multicollinearity ?
+
+
+```
+
+```{r}
+#checking interaction effects 
+#interaction effect occurs when the influence of one predictor on the dependent variable (NDAVI) changes depending on the value of another predictor. In this case, an interaction between water quality measurements and site means that the effect of these water quality parameters on NDAVI depends on the site 
+
+# Interaction model
+model_interaction <- lm(NDAVI ~ (DO.mg.L + DO.sat + Conductivity.uS.cm + Salinity.ppt + Temperature.C + pH) * site, data = SAVdata)
+
+# Summary
+summary(model_interaction)
+
+
+#the reference site for these results in COPR
+#this is showing how water quality changes at designated sites in relation to at COPR 
+
+#p values over 0.05 mean that there is no statistically significant difference in how the water quality measurement affects NDAVI between the non-reference site and reference site. 
+```
+
+```{r}
+
+# Plot interaction effect
+ggplot(SAVdata, aes(x=DO.mg.L, y=NDAVI, color=site)) + 
+  geom_point() + 
+  geom_smooth(method="lm", se=FALSE)
+
+
+```
+```{r}
+
+```
+
+
