@@ -39,11 +39,9 @@ str(SAVdata)
 #converting date column into date format instead of character
 SAVdata$date <- as.Date(SAVdata$date, format = "%m/%d/%Y")
 str(SAVdata) #checking to see date change occurred correctly
+
 ```
-```{r}
-#NOTE :: !!!
-#this data is incomplete, missing COPR values
-```
+
 
 ```{r}
 # i need to omit NA values, but need to think this through and do this carefully because I dont want to omit entire rows that have only one NA in one column, so might need to think about this. maybe run each regression at a time instead of all together like I did below ?
@@ -112,34 +110,139 @@ cor.test(as.numeric(copr_timecor$date), copr_timecor$NDAVI)
 ```{r}
 #now time to analyze and see if any of the water quality measurements effect NDAVI 
 
-#starting with running individual regression models for each individual water quality measurement to see if they are signfiicant predictors of NDAVI 
+#starting with running individual regression models for each individual water quality measurement to see if they are signficant predictors of NDAVI 
+
 
 #DO.mg.L linear regresison
-model_DO.mg <- lm(NDAVI ~ DO.mg.L, data = SAVdata)
-summary(model_DO.mg)
 
-#DO.sat linear regression
-model_DO.sat <- lm(NDAVI ~ DO.sat, data = SAVdata)
-summary(model_DO.sat)
+#starting by isolating columns of interest 
+SAV_DO_mg_L <- SAVdata[, c("date", "site", "NDAVI", "DO.mg.L")]
+nrow(SAV_DO_mg_L) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_DO_mg_L <- na.omit(SAV_DO_mg_L)
+nrow(SAV_DO_mg_L) #making sure this number is lower as to remove NAs. here it is 178
 
-#Conductivity.uS.cm linear regression
-model_Conductivity <- lm(NDAVI ~ Conductivity.uS.cm, data = SAVdata)
-summary(model_Conductivity)
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$DO.mg.L)) 
+sum(is.na(SAV_DO_mg_L$DO.mg.L))
 
-#Salinity.ppt linear regression
-model_Salinity <- lm(NDAVI ~ Salinity.ppt, data = SAVdata)
-summary(model_Salinity)
+#running linear regression on NA data set
+model_DO.mg <- lm(NDAVI ~ DO.mg.L, data = SAV_DO_mg_L)
+summary(model_DO.mg) #check to make sure the degrees of freedom matches number of rows - 2 (bc looking at 2 variables, NDAVI and DO) which it does so yay
 
-#Temperature linear regression
-model_Temp <- lm(NDAVI ~ Temperature.C, data = SAVdata)
-summary(model_Temp)
-
-#pH linear regression
-model_pH <- lm(NDAVI ~ pH, data = SAVdata)
-summary(model_pH)
-
+#for DO.mg.L, p is 0.4332, so not statistiaclly significant
 ```
 
+
+```{r}
+#DO.sat linear regression
+#starting by isolating columns of interest 
+SAV_DO_sat <- SAVdata[, c("date", "site", "NDAVI", "DO.sat")]
+nrow(SAV_DO_sat) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_DO_sat <- na.omit(SAV_DO_sat)
+nrow(SAV_DO_sat) #making sure this number is lower as to remove NAs.here it is 197
+
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$DO.sat)) 
+sum(is.na(SAV_DO_sat$DO.sat))
+
+#running linear regression on NA data set
+model_DO.sat <- lm(NDAVI ~ DO.sat, data = SAV_DO_sat)
+summary(model_DO.sat) #make sure degrees of freedom is nrow - 2, which it is so yay
+
+#for DO.sat, p value is 0.2562 so not statistically significant
+```
+
+
+```{r}
+#Conductivity.uS.cm linear regression
+
+#starting by isolating columns of interest 
+SAV_Cond <- SAVdata[, c("date", "site", "NDAVI", "Conductivity.uS.cm")]
+nrow(SAV_Cond) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_Cond <- na.omit(SAV_Cond)
+nrow(SAV_Cond) #making sure this number is lower as to remove NAs.here it is 182
+
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$Conductivity.uS.cm)) 
+sum(is.na(SAV_Cond$Conductivity.uS.cm))
+
+#running linear regression on NA data set
+model_Cond <- lm(NDAVI ~ Conductivity.uS.cm, data = SAV_Cond)
+summary(model_Cond) #make sure degrees of freedom is nrow - 2, which it is so yay
+
+#for Conductivity, p value is 0.3099 so not statistically significant
+```
+
+
+```{r}
+#Salinity.ppt linear regression
+
+#starting by isolating columns of interest 
+SAV_Salinity <- SAVdata[, c("date", "site", "NDAVI", "Salinity.ppt")]
+nrow(SAV_Salinity) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_Salinity <- na.omit(SAV_Salinity)
+nrow(SAV_Salinity) #making sure this number is lower as to remove NAs.here it is 159
+
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$Salinity.ppt)) 
+sum(is.na(SAV_Salinity$Salinity.ppt))
+
+#running linear regression on NA data set
+model_Salinity <- lm(NDAVI ~ Salinity.ppt, data = SAV_Salinity)
+summary(model_Salinity) #make sure degrees of freedom is nrow - 2, which it is so yay
+
+#for salinity, p value is 0.006195 so it is statistically significant !!!!!!
+```
+
+
+```{r}
+#Temperature linear regression
+
+#starting by isolating columns of interest 
+SAV_Temp <- SAVdata[, c("date", "site", "NDAVI", "Temperature.C")]
+nrow(SAV_Temp) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_Temp <- na.omit(SAV_Temp)
+nrow(SAV_Temp) #making sure this number is lower as to remove NAs.here it is 198
+
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$Temperature.C)) 
+sum(is.na(SAV_Temp$Temperature.C))
+
+#running linear regression on NA data set
+model_Temp <- lm(NDAVI ~ Temperature.C, data = SAV_Temp)
+summary(model_Temp) #make sure degrees of freedom is nrow - 2, which it is so yay
+
+#for Temp, p value is 0.02858 so temperature is statistically significant !!!!
+```
+
+
+```{r}
+#pH linear regression
+#starting by isolating columns of interest 
+SAV_pH <- SAVdata[, c("date", "site", "NDAVI", "pH")]
+nrow(SAV_pH) #seeing how many rows, says there are 219 
+#removing NAs
+SAV_pH <- na.omit(SAV_pH)
+nrow(SAV_pH) #making sure this number is lower as to remove NAs.here it is 60
+#this is lowkey a small sample size so we need to include that in our analysis !!!!!
+
+#checking sums of NAs before and after using omit to make sure occurred correctly
+sum(is.na(SAVdata$pH)) 
+sum(is.na(SAV_pH$pH))
+
+#running linear regression on NA data set
+model_pH <- lm(NDAVI ~ pH, data = SAV_pH)
+summary(model_pH) #make sure degrees of freedom is nrow - 2, which it is so yay
+
+#for pH p value is 0.02822 so it is statistically significant !!!! small sample size tho so make sure to reference that 
+
+```
+# for everything below, removing NAs make the data set super small, so if we want to use these types of statistics we may have to think about restructuring the data for the best results, we should talk to alison regarding if its even beneficial to run these regressions in our analysis 
 ```{r}
 
 #running multiple regression model including all water quality variables to understand their combined effect on NDAVI
@@ -147,7 +250,12 @@ summary(model_pH)
 # Fit the model
 model <- lm(NDAVI ~ DO.mg.L + DO.sat + Conductivity.uS.cm + Salinity.ppt + Temperature.C + pH, data = SAVdata)
 # Summary of the model
-summary(model)
+summary(model) #only 31 dof which means that not many entries were used so inaccurate, maybe dont use this multiple regression in our analysis ?
+
+vif(model) #high collienarlity in the model which isnt good, maybe this is because so few observations used in the model?
+
+#consider doing a stepwise regression
+
 
 
 # Diagnostic plots
@@ -156,7 +264,6 @@ plot(model)
 
 #results that are less than 0.05 show that there is a statistically significant relationship between the water quality variable and its effect on NDAVI even after accounting for/ taking into account all the other varaibles 
 
-#do i need to check for multicollinearity ?
 
 
 ```
